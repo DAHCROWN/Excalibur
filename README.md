@@ -1,8 +1,6 @@
+# 🗡️ **Excalibur — AI Email Fraud & Scam Detection Agent (Google ADK + RAG + Multi‑Signal Analysis)**
 
-
-# 📧 **AI Email Fraud Detection Agent (Google ADK + RAG + Multi-Signal Analysis)**
-
-This project implements a **full AI-powered email fraud and scam detection agent** using **Google’s Agent Development Kit (ADK)** and optional **LangChain/LangGraph** components.  
+Excalibur is a **full AI-powered email fraud and scam detection agent** using **Google’s Agent Development Kit (ADK)** and optional **LangChain/LangGraph** components.  
 The system analyzes incoming emails using multiple layers of intelligence:
 
 - **Email content analysis (LLM + RAG)**
@@ -52,7 +50,7 @@ Combines all signals to produce:
 # 📂 **Project Structure**
 
 ```
-email-fraud-agent/
+excalibur/
 │
 ├── agents/
 │   ├── email_parser_agent.py
@@ -273,7 +271,7 @@ The DecisionAgent aggregates all signals.
 ---
 
 # 📝 **Deliverables**
-This project includes:
+Excalibur includes:
 
 - Fully structured ADK implementation  
 - Modular tools for email + domain + URL analysis  

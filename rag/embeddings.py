@@ -3,6 +3,7 @@
 from typing import List
 from pinecone import Pinecone
 
+from google import genai
 import os
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -26,6 +27,27 @@ class PineconeEmbeddingEngine:
         """
         response = self.pc.inference.embed(
             model=self.model_name,
-            inputs=texts
+            inputs=texts,
+            parameters={
+                "input_type": "passage", 
+                # "truncate": "END"
+            }
         )
         return response.embeddings
+
+class GeminiEmbeddingEngine:
+    """
+    Embedding engine using Gemini's hosted embedding model.
+    """
+
+    def __init__(self, model_name: str = "text-embedding-004"):
+        self.model_name = model_name
+        client = genai.Client()
+        self.client = client
+    def embed(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings using Gemini's hosted embedding models.
+        """
+        result = self.client.models.embed_content(
+        model="gemini-embedding-001",
+        contents="What is the meaning of life?")

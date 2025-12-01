@@ -141,10 +141,47 @@ def ingest():
     # Step 1 — Load + validate CSV
     records = load_csv_records()
 
+    # If there is nothing to embed, exit early to avoid invalid requests
+    if not records:
+        print("[INGEST] No records loaded; nothing to embed or upload.")
+        return
+
     # Step 2 — Embed bodies
     embedder = EmbeddingEngine()
     print("[INGEST] Generating embeddings...")
-    embeddings = embedder.embed([record.body for record in records])
+
+    MAX_BODY_CHARS = 1500  # soft limit to keep requests reasonable in size
+    BATCH_SIZE = 5      # adjust based on body lengths and limits
+
+    def _prepare_text(record):
+        body = record.body or ""
+        # Truncate extremely long bodies to reduce payload size
+        if len(body) > MAX_BODY_CHARS:
+            body = body[:MAX_BODY_CHARS]
+        return body
+
+    all_embeddings = []
+    # for start in range(0, len(records), BATCH_SIZE):
+    for start in range(0, 10):
+
+        batch_records = records[start:start + BATCH_SIZE]
+        batch_texts = [_prepare_text(r) for r in batch_records]
+
+        # Defensive check – should not be empty, but guard anyway
+        if not batch_texts:
+            continue
+
+        batch_embeddings = embedder.embed(batch_texts)
+
+        # Some client versions / error paths may return None instead of a list.
+        # Guard against that so we don't hit "NoneType is not iterable".
+        if not batch_embeddings:
+            print(f"[INGEST] Warning: received no embeddings for batch starting at index {start}, skipping.")
+            continue
+
+        all_embeddings.extend(batch_embeddings)
+
+    embeddings = all_embeddings
 
     # Step 3 — Build datapoints
     datapoints = build_pinecone_datapoints(records, embeddings)

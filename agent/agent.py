@@ -1,5 +1,6 @@
 from google.adk.agents.llm_agent import Agent, LlmAgent
 from models.email import EmailContent
+from models.report import EmailReport
 from tools.email_parser_tool import parse_eml_file
 from tools.whois_lookup_tool import search_whois_api_ninja
 from tools.rag_retriever_tool import retrieve_similar_emails
@@ -58,5 +59,6 @@ root_agent = Agent(
     description="Checks User email and flags potential phishing emails and fraud emails",
     instruction="You are a helpful email fraud detection agent that checks user email and flags potential phishing emails and fraud emails",
     tools=[parse_eml_file],
-    sub_agents=[email_parser_agent, background_check_agent, rag_retriever_agent]
+    sub_agents=[email_parser_agent, background_check_agent, rag_retriever_agent],
+    output_schema=EmailReport,
 )
