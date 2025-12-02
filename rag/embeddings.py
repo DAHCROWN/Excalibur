@@ -2,7 +2,6 @@
 
 from typing import List
 from pinecone import Pinecone
-
 from google import genai
 import os
 
@@ -20,20 +19,28 @@ class PineconeEmbeddingEngine:
             raise ValueError("PINECONE_API_KEY not set in environment variables.")
         self.pc = Pinecone(api_key=PINECONE_API_KEY)
         self.model_name = model_name
+        
 
     def embed(self, texts: List[str]) -> List[List[float]]:
         """
         Generate embeddings using Pinecone's hosted embedding models.
         """
-        response = self.pc.inference.embed(
-            model=self.model_name,
-            inputs=texts,
-            parameters={
-                "input_type": "passage", 
-                # "truncate": "END"
-            }
-        )
-        return response.embeddings
+        try:
+            print("---Received Text to Embed---")
+            # print(f"Type: {type(texts)}")
+            # print("Content")
+            # print(texts)
+            response = self.pc.inference.embed(
+                model=self.model_name,
+                inputs=texts,
+                parameters={ "input_type": "passage", "truncate": "END"}
+            )
+            print("---------------------------")
+            print("Embedding Successful")
+            # print(response.data)
+            return response.data
+        except Exception as e:
+            print(f"Failed to embed text, {texts[0]}")
 
 class GeminiEmbeddingEngine:
     """

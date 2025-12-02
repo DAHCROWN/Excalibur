@@ -1,4 +1,3 @@
-import csv
 import os
 import uuid
 from pathlib import Path
@@ -9,7 +8,8 @@ from pinecone import Pinecone
 from rag.embeddings import PineconeEmbeddingEngine as EmbeddingEngine
 from models.datasets import NigerianFraudDataset, SpamAssasinDataset, LingDataset, EmailRecord
 
-
+from langchain_community.document_loaders.csv_loader import CSVLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 # -----------------------------
 # CONFIG
 # -----------------------------
@@ -27,21 +27,32 @@ DATASET_REGISTRY = {
         "model": NigerianFraudDataset,
         "path": "datasets/nigerian_fraud.csv",
     },
-    "spam_assassin": {
-        "model": SpamAssasinDataset,
-        "path": "datasets/spam_assassin.csv",
-    },
-    "ling_spam": {
-        "model": LingDataset,
-        "path": "datasets/ling_spam.csv",
-    },
-    # Generic fallback dataset
-    "generic": {
-        "model": EmailRecord,
-        "path": None,  # When loading automatically from folder
-    }
+    # "spam_assassin": {
+    #     "model": SpamAssasinDataset,
+    #     "path": "datasets/spam_assassin.csv",
+    # },
+    # "ling_spam": {
+    #     "model": LingDataset,
+    #     "path": "datasets/ling_spam.csv",
+    # },
+    # # Generic fallback dataset
+    # "generic": {
+    #     "model": EmailRecord,
+    #     "path": None,  # When loading automatically from folder
+    # }
 }
 
+
+def parse_page_content(page_content: str) -> dict:
+    """
+    Converts the multi-line 'key: value' format into a dictionary.
+    """
+    output = {}
+    for line in page_content.split("\n"):
+        if ":" in line:
+            key, value = line.split(":", 1)
+            output[key.strip()] = value.strip()
+    return output
 
 # -----------------------------
 # Load + Validate CSV Records
@@ -59,28 +70,39 @@ def load_csv_records() -> List[Any]:
             fp = Path(file_path)
             if fp.exists():
                 print(f"[INGEST] Loading dataset '{name}' from {fp}...")
-                with open(fp, newline='', encoding="utf-8", errors="ignore") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        try:
-                            validated.append(model(**row))
-                        except Exception as e:
-                            print(f"[WARN] Skipping invalid row in {name}: {e}")
+                loader = CSVLoader(str(fp))
+                docs = loader.load()
+                # print("Sample Record")
+                # print(type(docs[0]))
+                # print(docs[0].metadata)
+                # return 
+
+                for doc in docs:
+                    # row = doc.metadata  # CSV columns come through metadata
+
+                    try:
+                        # validated.append(model(**row))
+                        # validated.append(model(**doc))
+                        validated.append(str(doc))
+
+                    except Exception as e:
+                        print(f"[WARN] Skipping invalid row in {name}: {e}")
 
     # Auto‑load any other CSV in datasets folder using the generic EmailRecord schema
     for file in dataset_path.glob("*.csv"):
-        # skip files already identified in registry
         if any(cfg["path"] == str(file) for cfg in DATASET_REGISTRY.values()):
             continue
 
         print(f"[INGEST] Auto-loading generic CSV: {file}")
-        with open(file, newline='', encoding="utf-8", errors="ignore") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                try:
-                    validated.append(EmailRecord(**row))
-                except Exception as e:
-                    print(f"[WARN] Skipping invalid generic row: {e}")
+        loader = CSVLoader(str(file))
+        docs = loader.load()
+        print(docs[0])
+        for doc in docs:
+            row = doc.metadata
+            try:
+                validated.append(EmailRecord(**row))
+            except Exception as e:
+                print(f"[WARN] Skipping invalid generic row: {e}")
 
     print(f"[INGEST] Loaded {len(validated)} validated rows from all datasets.")
     return validated
@@ -113,7 +135,9 @@ def build_pinecone_datapoints(records: List[Any], embeddings: List[List[float]])
 # Upload to Pinecone Vector Store
 # -----------------------------
 def upload_to_pinecone(datapoints: List[Dict[str, Any]]):
-    print("[PINECONE] Uploading vectors...")
+    # print("[PINECONE] Uploading vectors...")
+    # print(datapoints)
+    # return
 
     pc = Pinecone(api_key=PINECONE_API_KEY)
 
@@ -136,11 +160,19 @@ def upload_to_pinecone(datapoints: List[Dict[str, Any]]):
 # Main Ingest Function
 # -----------------------------
 def ingest():
+    # Helper Function
+    def _prepare_text(record):
+        # body = record.body or ""
+        body = record
+        # Truncate extremely long bodies to reduce payload size
+        if len(body) > MAX_BODY_CHARS:
+            body = body[:MAX_BODY_CHARS]
+        return body
+
     print("[INGEST] Starting...")
 
-    # Step 1 — Load + validate CSV
+    #* Step 1 — Load + validate CSV
     records = load_csv_records()
-
     # If there is nothing to embed, exit early to avoid invalid requests
     if not records:
         print("[INGEST] No records loaded; nothing to embed or upload.")
@@ -150,20 +182,13 @@ def ingest():
     embedder = EmbeddingEngine()
     print("[INGEST] Generating embeddings...")
 
-    MAX_BODY_CHARS = 1500  # soft limit to keep requests reasonable in size
-    BATCH_SIZE = 5      # adjust based on body lengths and limits
+    MAX_BODY_CHARS = 2000  # soft limit to keep requests reasonable in size
+    BATCH_SIZE = 1     # adjust based on body lengths and limits
 
-    def _prepare_text(record):
-        body = record.body or ""
-        # Truncate extremely long bodies to reduce payload size
-        if len(body) > MAX_BODY_CHARS:
-            body = body[:MAX_BODY_CHARS]
-        return body
 
     all_embeddings = []
     # for start in range(0, len(records), BATCH_SIZE):
-    for start in range(0, 10):
-
+    for start in range(0, 5):
         batch_records = records[start:start + BATCH_SIZE]
         batch_texts = [_prepare_text(r) for r in batch_records]
 
@@ -171,7 +196,10 @@ def ingest():
         if not batch_texts:
             continue
 
-        batch_embeddings = embedder.embed(batch_texts)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
+        texts = text_splitter.split_text(batch_texts[0])
+        batch_embeddings = embedder.embed(texts)
+        # batch_embeddings = embedder.embed(batch_texts)
 
         # Some client versions / error paths may return None instead of a list.
         # Guard against that so we don't hit "NoneType is not iterable".
@@ -182,6 +210,8 @@ def ingest():
         all_embeddings.extend(batch_embeddings)
 
     embeddings = all_embeddings
+    # print("embeddings")
+    # print(embeddings)
 
     # Step 3 — Build datapoints
     datapoints = build_pinecone_datapoints(records, embeddings)
