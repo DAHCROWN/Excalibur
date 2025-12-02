@@ -14,7 +14,7 @@ class EmailRecord(BaseModel):
     subject: Optional[str] = Field(None, description="Email subject")
     body: str = Field(..., description="Full email body text")
     urls: Optional[int] = Field(0, description="Total number of embedded URLs")
-    label: Optional[str] = Field(None, description="Spam/Not Spam or category label")
+    label: Optional[int] = Field(None, description="Spam/Not Spam or category label")
 
 class NigerianFraudDataset(BaseModel):
     """
@@ -26,7 +26,7 @@ class NigerianFraudDataset(BaseModel):
     subject: Optional[str] = Field(None, description="Email subject")
     body: str = Field(..., description="Full email body text")
     urls: Optional[int] = Field(0, description="Total number of embedded URLs")
-    label: Optional[str] = Field(None, description="Spam/Not Spam or category label")
+    label: Optional[int] = Field(None, description="Spam/Not Spam or category label")
 
 class SpamAssasinDataset(BaseModel):
     """
@@ -38,7 +38,7 @@ class SpamAssasinDataset(BaseModel):
     subject: Optional[str] = Field(None, description="Email subject")
     body: str = Field(..., description="Full email body text")
     urls: Optional[int] = Field(0, description="Total number of embedded URLs")
-    label: Optional[str] = Field(None, description="Spam/Not Spam or category label")
+    label: Optional[int] = Field(None, description="Spam/Not Spam or category label")
 
 
 class LingDataset(BaseModel):
@@ -47,4 +47,4 @@ class LingDataset(BaseModel):
     """
     subject: Optional[str] = Field(None, description="Email subject")
     body: str = Field(..., description="Full email body text")
-    label: Optional[str] = Field(None, description="Spam/Not Spam or category label")
+    label: Optional[int] = Field(None, description="Spam/Not Spam or category label")

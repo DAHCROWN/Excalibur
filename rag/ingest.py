@@ -10,15 +10,13 @@ from models.datasets import NigerianFraudDataset, SpamAssasinDataset, LingDatase
 
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import pandas as pd
 # -----------------------------
 # CONFIG
 # -----------------------------
 DATASET_DIR = "../datasets/"
-
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = "fraud-email-index"
-
-
 # -----------------------------
 # DATASET REGISTRY
 # -----------------------------
@@ -42,18 +40,6 @@ DATASET_REGISTRY = {
     # }
 }
 
-
-def parse_page_content(page_content: str) -> dict:
-    """
-    Converts the multi-line 'key: value' format into a dictionary.
-    """
-    output = {}
-    for line in page_content.split("\n"):
-        if ":" in line:
-            key, value = line.split(":", 1)
-            output[key.strip()] = value.strip()
-    return output
-
 # -----------------------------
 # Load + Validate CSV Records
 # -----------------------------
@@ -70,23 +56,17 @@ def load_csv_records() -> List[Any]:
             fp = Path(file_path)
             if fp.exists():
                 print(f"[INGEST] Loading dataset '{name}' from {fp}...")
-                loader = CSVLoader(str(fp))
-                docs = loader.load()
-                # print("Sample Record")
-                # print(type(docs[0]))
-                # print(docs[0].metadata)
-                # return 
 
+                df = pd.read_csv(file_path)
+                # TODO increase to index the full dataset
+                docs = df.head(10).to_dict(orient='records')
+                # print(docs[0])
                 for doc in docs:
-                    # row = doc.metadata  # CSV columns come through metadata
-
-                    try:
-                        # validated.append(model(**row))
-                        # validated.append(model(**doc))
-                        validated.append(str(doc))
-
+                    try:        # <- THIS is a dict
+                        validated.append(model(**doc))
                     except Exception as e:
                         print(f"[WARN] Skipping invalid row in {name}: {e}")
+
 
     # Auto‑load any other CSV in datasets folder using the generic EmailRecord schema
     for file in dataset_path.glob("*.csv"):
@@ -96,7 +76,6 @@ def load_csv_records() -> List[Any]:
         print(f"[INGEST] Auto-loading generic CSV: {file}")
         loader = CSVLoader(str(file))
         docs = loader.load()
-        print(docs[0])
         for doc in docs:
             row = doc.metadata
             try:
@@ -106,8 +85,7 @@ def load_csv_records() -> List[Any]:
 
     print(f"[INGEST] Loaded {len(validated)} validated rows from all datasets.")
     return validated
-
-
+    
 # -----------------------------
 # Build Pinecone Datapoints
 # -----------------------------
@@ -117,7 +95,7 @@ def build_pinecone_datapoints(records: List[Any], embeddings: List[List[float]])
     for record, vector in zip(records, embeddings):
         datapoints.append({
             "id": str(uuid.uuid4()),
-            "values": vector,
+            "values": vector['values'],
             "metadata": {
                 "sender": record.sender,
                 "receiver": record.receiver,
@@ -141,6 +119,7 @@ def upload_to_pinecone(datapoints: List[Dict[str, Any]]):
 
     pc = Pinecone(api_key=PINECONE_API_KEY)
 
+    # Create if not found
     if not pc.has_index(PINECONE_INDEX_NAME):
         print("[PINECONE] Index does not exist, creating...")
         pc.create_index(
@@ -162,8 +141,7 @@ def upload_to_pinecone(datapoints: List[Dict[str, Any]]):
 def ingest():
     # Helper Function
     def _prepare_text(record):
-        # body = record.body or ""
-        body = record
+        body = record.body or ""
         # Truncate extremely long bodies to reduce payload size
         if len(body) > MAX_BODY_CHARS:
             body = body[:MAX_BODY_CHARS]
@@ -183,12 +161,11 @@ def ingest():
     print("[INGEST] Generating embeddings...")
 
     MAX_BODY_CHARS = 2000  # soft limit to keep requests reasonable in size
-    BATCH_SIZE = 1     # adjust based on body lengths and limits
+    BATCH_SIZE = 10     # adjust based on body lengths and limits
 
 
     all_embeddings = []
-    # for start in range(0, len(records), BATCH_SIZE):
-    for start in range(0, 5):
+    for start in range(0, len(records), BATCH_SIZE):
         batch_records = records[start:start + BATCH_SIZE]
         batch_texts = [_prepare_text(r) for r in batch_records]
 
@@ -224,3 +201,6 @@ def ingest():
 
 if __name__ == "__main__":
     ingest()
+
+
+# python3 -m rag.ingest

@@ -30,15 +30,15 @@ class PineconeEmbeddingEngine:
             # print(f"Type: {type(texts)}")
             # print("Content")
             # print(texts)
-            response = self.pc.inference.embed(
+            embeddings = self.pc.inference.embed(
                 model=self.model_name,
                 inputs=texts,
                 parameters={ "input_type": "passage", "truncate": "END"}
             )
             print("---------------------------")
             print("Embedding Successful")
-            # print(response.data)
-            return response.data
+            # print(embeddings)
+            return embeddings.data
         except Exception as e:
             print(f"Failed to embed text, {texts[0]}")
 
