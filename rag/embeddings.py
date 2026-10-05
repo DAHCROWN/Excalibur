@@ -3,10 +3,7 @@
 from typing import List
 from pinecone import Pinecone
 from google import genai
-import os
-
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_MODEL = "llama-text-embed-v2"  # Pinecone-hosted embedding model
+from lib.pinecone import PINECONE_MODEL, PINECONE_API_KEY
 
 
 class PineconeEmbeddingEngine:

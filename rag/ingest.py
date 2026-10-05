@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 
 from pinecone import Pinecone
 
+from lib.pinecone import PINECONE_API_KEY, PINECONE_INDEX_NAME
 from rag.embeddings import PineconeEmbeddingEngine as EmbeddingEngine
 from models.datasets import NigerianFraudDataset, SpamAssasinDataset, LingDataset, EmailRecord
 
@@ -15,8 +16,6 @@ import pandas as pd
 # CONFIG
 # -----------------------------
 DATASET_DIR = "../datasets/"
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_INDEX_NAME = "fraud-email-index"
 # -----------------------------
 # DATASET REGISTRY
 # -----------------------------

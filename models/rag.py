@@ -1,0 +1,16 @@
+
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class EmailRecord(BaseModel):
+    """
+    Schema for normalized email dataset rows.
+    Adjust this model whenever your CSV structure evolves.
+    """
+    sender: str = Field(..., description="Sender email address")
+    receiver: str = Field(..., description="Recipient email address")
+    date: Optional[str] = Field(None, description="Email date string")
+    subject: Optional[str] = Field(None, description="Email subject")
+    body: str = Field(..., description="Full email body text")
+    urls: Optional[int] = Field(0, description="Total number of embedded URLs")
+    label: Optional[int] = Field(None, description="Spam/Not Spam or category label")

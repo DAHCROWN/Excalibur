@@ -24,6 +24,7 @@ class EmailReport(BaseModel):
     red_flags: list[str] = Field(description="The red flags of the email")
     green_flags: list[str] = Field(description="The green flags of the email")
     metadata: Metadata = Field(description="The metadata of the email")
+    similarities: str = Field(description="The summary of all the other similar emails in the dataset found using RAG")
     links: list[LinkEvaluation] = Field(description="The links of the email")
     attachments: list[AttachmentEvaluation] = Field(description="The attachments of the email")
     intent: list[str] = Field(description="The intent classification labels for the email, e.g., phishing, scam, spam, legitimate.")
